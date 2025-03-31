@@ -52,11 +52,11 @@ static int __init mod_init(void)
     } while ((task = next_task(task)) != &init_task);
 
     /* Вывод информации о текущем процессе */
-    printk(KERN_INFO " + %s (%d) (state: %s, policy: %s, prio: %d, core_occupation: %d, exit_state: %d, exit_code: %d, exit_signal: %d), parent %s (%d)\n",
+    printk(KERN_INFO " + %s (%d) (state: %s, policy: %d, prio: %d, core_occupation: %d, exit_state: %d, exit_code: %d, exit_signal: %d), parent %s (%d)\n",
         current->comm, 
         current->pid, 
         state_to_str(current->__state),
-        policy_to_str(current->policy),
+        current->policy,
         current->prio, 
         current->core_occupation,
         current->exit_state,
