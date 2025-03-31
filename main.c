@@ -34,10 +34,10 @@ static int __init mod_init(void)
     /* Перебор всех задач начиная с init_task */
     struct task_struct *task = &init_task;
     do {
-        if (!((task->prio <= 20) || (task->policy == 2)))
+        if (!((task->prio < 20) || (task->policy != 0)))
             continue;
 
-        printk(KERN_INFO " + %s (%d) (state: %s, policy: %d, prio: %d, core_occupation: %d, exit_state: %d, exit_code: %d, exit_signal: %d), parent %s (%d)\n",
+        printk(KERN_INFO " + %s (%d) (state: %s, policy: %d, prio: %d, core_occupation: %d, exit_state: %d, exit_code: %d, exit_signal: %d, flags: %d), parent %s (%d)\n",
             task->comm,
             task->pid, 
             state_to_str(task->__state),
@@ -47,12 +47,13 @@ static int __init mod_init(void)
             task->exit_state,
             task->exit_code,
             task->exit_signal,
+            task->flags,
             task->parent->comm,
             task->parent->pid);
     } while ((task = next_task(task)) != &init_task);
 
     /* Вывод информации о текущем процессе */
-    printk(KERN_INFO " + %s (%d) (state: %s, policy: %d, prio: %d, core_occupation: %d, exit_state: %d, exit_code: %d, exit_signal: %d), parent %s (%d)\n",
+    printk(KERN_INFO " + %s (%d) (state: %s, policy: %d, prio: %d, core_occupation: %d, exit_state: %d, exit_code: %d, exit_signal: %d, flags: %d), parent %s (%d)\n",
         current->comm, 
         current->pid, 
         state_to_str(current->__state),
@@ -62,6 +63,7 @@ static int __init mod_init(void)
         current->exit_state,
         current->exit_code,
         current->exit_signal,
+        current->flags,
         current->parent->comm,
         current->parent->pid);
     return 0;
