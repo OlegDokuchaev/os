@@ -4,7 +4,7 @@
 #include <linux/fs_struct.h>
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Inspirate789");
+MODULE_AUTHOR("OLEG DOKUCAEV");
 
 static int __init mod_init(void)
 {
@@ -12,20 +12,42 @@ static int __init mod_init(void)
     struct task_struct *task = &init_task;
     do
     {
-        printk(KERN_INFO " + %s (%d) (%d - state, %d - prio, flags - %d, policy - %d), parent %s (%d), d_name %s",
-            task->comm, task->pid, task->__state, task->prio, task->flags, task->policy, task->parent->comm, task->parent->pid, task->fs->root.dentry->d_name.name);
+        printk(KERN_INFO " + %s (%d) (%d - state, %d - prio, policy - %d, core_occupation - %d, exit_state - %d, exit_code - %d, exit_signal - %d), parent %s (%d)",
+            task->comm,
+            task->pid, 
+            task->__state, 
+            task->prio, 
+            task->policy,
+            task->core_occupation,
+            task->exit_state,
+            task->exit_code,
+            task->exit_signal,
+            task->parent->comm,
+            task->parent->pid);
     } while ((task = next_task(task)) != &init_task);
 
-   // task = current;
-    printk(KERN_INFO " + %s (%d) (%d - state, %d - prio, flags - %d, policy - %d), parent %s (%d), d_name %s",
-        current->comm, current->pid, current->__state, current->prio, current->flags, current->policy, current->parent->comm, current->parent->pid, current->fs->root.dentry->d_name.name);
+    printk(KERN_INFO " + %s (%d) (%d - state, %d - prio, policy - %d, core_occupation - %d, exit_state - %d, exit_code - %d, exit_signal - %d), parent %s (%d)",
+        current->comm, 
+        current->pid, 
+        current->__state, 
+        current->prio, 
+        current->policy,
+        current->core_occupation,
+        current->exit_state,
+        current->exit_code,
+        current->exit_signal,
+        current->parent->comm,
+        current->parent->pid);
     return 0;
 }
 
 static void __exit mod_exit(void)
 {
-    printk(KERN_INFO " + %s - %d, parent %s - %d\n", current->comm,
-           current->pid, current->parent->comm, current->parent->pid);
+    printk(KERN_INFO " + %s - %d, parent %s - %d\n",
+           current->comm,
+           current->pid, 
+           current->parent->comm, 
+           current->parent->pid);
     printk(KERN_INFO " + module is unloaded.\n");
 }
 
