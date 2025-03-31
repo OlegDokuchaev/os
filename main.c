@@ -37,7 +37,7 @@ static int __init mod_init(void)
         if (!((task->prio <= 20) || (task->policy == 2)))
             continue;
 
-        printk(KERN_INFO " + %s (%d) (state: %s, policy: %s, prio: %d, core_occupation: %d, exit_state: %d, exit_code: %d, exit_signal: %d), parent %s (%d)\n",
+        printk(KERN_INFO " + %s (%d) (state: %s, policy: %d, prio: %d, core_occupation: %d, exit_state: %d, exit_code: %d, exit_signal: %d), parent %s (%d)\n",
             task->comm,
             task->pid, 
             state_to_str(task->__state),
