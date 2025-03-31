@@ -27,22 +27,6 @@ static const char *state_to_str(long state)
     return "UNKNOWN";
 }
 
-/* Функция преобразования политики планирования в текст */
-static const char *policy_to_str(int policy)
-{
-    switch(policy) {
-        case SCHED_NORMAL: /* также SCHED_OTHER */
-            return "SCHED_NORMAL (CFS) - стандартная политика с использованием Completely Fair Scheduler";
-        case SCHED_FIFO:
-            return "SCHED_FIFO - политика реального времени (First In, First Out)";
-        case SCHED_RR:
-            return "SCHED_RR - политика реального времени с циклическим распределением (Round Robin)";
-
-        default:
-            return "UNKNOWN";
-    }
-}
-
 static int __init mod_init(void)
 {
     printk(KERN_INFO " + module is loaded.\n");
@@ -50,11 +34,14 @@ static int __init mod_init(void)
     /* Перебор всех задач начиная с init_task */
     struct task_struct *task = &init_task;
     do {
+        if (!((task->prio <= 20) || (task->policy == 2)))
+            continue;
+
         printk(KERN_INFO " + %s (%d) (state: %s, policy: %s, prio: %d, core_occupation: %d, exit_state: %d, exit_code: %d, exit_signal: %d), parent %s (%d)\n",
             task->comm,
             task->pid, 
             state_to_str(task->__state),
-            policy_to_str(task->policy),
+            task->policy,
             task->prio, 
             task->core_occupation,
             task->exit_state,
