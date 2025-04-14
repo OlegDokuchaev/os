@@ -4,7 +4,7 @@ CURRENT = $(shell uname -r)
 KDIR = /lib/modules/$(CURRENT)/build
 PWD = $(shell pwd)
 
-obj-m := md1.o md2.o md3.o
+obj-m := fortune.o
 
 default: 
 				make -C $(KDIR) M=$(PWD) modules 
