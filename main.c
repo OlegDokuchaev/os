@@ -2,168 +2,251 @@
 #include <linux/module.h>
 #include <linux/vmalloc.h>
 #include <linux/proc_fs.h>
+#include <linux/fs.h>
+#include <linux/uaccess.h>
+#include <linux/string.h>
+#include <linux/slab.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("OLEG DOKUCHAEV");
 
-#define COOKIE_POT_SIZE PAGE_SIZE
-#define FILENAME "fortuneFile"
-#define DIRNAME  "fortuneDir"
-#define SYMLINK  "fortuneLink"
-#define FILEPATH DIRNAME "/" FILENAME
+#define DIRNAME   "fortuneDir"
+#define FILENAME  "fortuneFile"
+#define SYMLINK   "fortuneLink"
+#define FILEPATH  DIRNAME "/" FILENAME
 
-static struct proc_dir_entry *fortuneFile;
-static struct proc_dir_entry *fortuneDir;
-static struct proc_dir_entry *fortuneLink;
+#define PID_BUF_SIZE   16
+#define STAT_BUF_SIZE  (PAGE_SIZE * 2)
+#define OUT_BUF_SIZE   (STAT_BUF_SIZE * 2)
 
-static char *cookiePot = NULL;
-char tmpBuf[COOKIE_POT_SIZE];
+static struct proc_dir_entry *fortune_dir;
+static struct proc_dir_entry *fortune_file;
+static struct proc_dir_entry *fortune_link;
 
-static int readInd = 0;
-static int writeInd = 0;
+static char    *stat_buf;
+static ssize_t  stat_len;
+static pid_t    stored_pid = -1;
 
-static void freeMemory(void)
+static const char *stat_no_descr[] = {
+    "(1) pid           '%s'\n",
+    "(2) comm          '%s'\n",
+    "(3) state         '%s'\n",
+    "(4) ppid          '%s'\n",
+    "(5) pgrp          '%s'\n",
+    "(6) session       '%s'\n",
+    "(7) tty_nr        '%s'\n",
+    "(8) tpgid         '%s'\n",
+    "(9) flags         '%s'\n",
+    "(10) minflt       '%s'\n",
+    "(11) cminflt      '%s'\n",
+    "(12) majflt       '%s'\n",
+    "(13) cmajflt      '%s'\n",
+    "(14) utime        '%s'\n",
+    "(15) stime        '%s'\n",
+    "(16) cutime       '%s'\n",
+    "(17) cstime       '%s'\n",
+    "(18) priority     '%s'\n",
+    "(19) nice         '%s'\n",
+    "(20) num_threads  '%s'\n",
+    "(21) itrealvalue  '%s'\n",
+    "(22) starttime    '%s'\n",
+    "(23) vsize        '%s'\n",
+    "(24) rss          '%s'\n",
+    "(25) rsslim       '%s'\n",
+    "(26) startcode    '%s'\n",
+    "(27) endcode      '%s'\n",
+    "(28) startstack   '%s'\n",
+    "(29) kstkesp      '%s'\n",
+    "(30) kstkeip      '%s'\n",
+    "(31) signal       '%s'\n",
+    "(32) blocked      '%s'\n",
+    "(33) sigignore    '%s'\n",
+    "(34) sigcatch     '%s'\n",
+    "(35) wchan        '%s'\n",
+    "(36) nswap        '%s'\n",
+    "(37) cnswap       '%s'\n",
+    "(38) exit_signal  '%s'\n",
+    "(39) processor    '%s'\n",
+    "(40) rt_priority  '%s'\n",
+    "(41) policy       '%s'\n",
+    "(42) delayacct_blkio_ticks '%s'\n",
+    "(43) guest_time   '%s'\n",
+    "(44) cguest_time  '%s'\n",
+    "(45) start_data   '%s'\n",
+    "(46) end_data     '%s'\n",
+    "(47) start_brk    '%s'\n",
+    "(48) arg_start    '%s'\n",
+    "(49) arg_end      '%s'\n",
+    "(50) env_start    '%s'\n",
+    "(51) env_end      '%s'\n",
+    "(52) exit_code    '%s'\n"
+};
+
+static ssize_t fetch_stat(pid_t pid)
 {
-    if (fortuneLink != NULL)
-        remove_proc_entry(SYMLINK, NULL);
+    char path[32];
+    struct file *filp;
+    loff_t pos = 0;
+    ssize_t n;
 
-    if (fortuneFile != NULL)
-        remove_proc_entry(FILENAME, fortuneDir);
+    snprintf(path, sizeof(path), "/proc/%d/stat", pid);
+    filp = filp_open(path, O_RDONLY, 0);
+    if (IS_ERR(filp))
+        return PTR_ERR(filp);
 
-    if (fortuneDir != NULL)
-        remove_proc_entry(DIRNAME, NULL);
+    n = kernel_read(filp, stat_buf, STAT_BUF_SIZE - 1, &pos);
+    filp_close(filp, NULL);
 
-    vfree(cookiePot);
+    if (n > 0)
+        stat_buf[n] = '\0';
+    return n;
 }
 
-
-static int fortuneOpen(struct inode *spInode, struct file *spFile)
+static int fortune_open(struct inode *inode, struct file *file)
 {
-    printk(KERN_INFO "fortune: open called\n");
+    pr_info("fortune_pid: open\n");
     return 0;
 }
 
-
-static int fortuneRelease(struct inode *spInode, struct file *spFile)
+static int fortune_release(struct inode *inode, struct file *file)
 {
-    printk(KERN_INFO "fortune: release called\n");
+    pr_info("fortune_pid: release\n");
     return 0;
 }
 
-
-static ssize_t fortuneWrite(struct file *file, const char __user *buf,
-                            size_t len, loff_t *fPos)
+static ssize_t fortune_write(struct file *file,
+                             const char __user *ubuf,
+                             size_t len, loff_t *ppos)
 {
-    printk(KERN_INFO "fortune: write called\n");
+    char pid_buf[PID_BUF_SIZE];
+    long pid;
+    int ret;
 
-
-    if (len > COOKIE_POT_SIZE - writeInd + 1)
-    {
-        printk(KERN_ERR "fortune: buffer overflow\n");
-        return -ENOSPC;
-    }
-
-    if (copy_from_user(&cookiePot[writeInd], buf, len) != 0)
-    {
-        printk(KERN_ERR "fortune: copy_from_user error\n");
+    pr_info("fortune_pid: write (%zu bytes)\n", len);
+    if (len == 0 || len >= PID_BUF_SIZE)
+        return -EINVAL;
+    if (copy_from_user(pid_buf, ubuf, len))
         return -EFAULT;
-    }
+    pid_buf[len] = '\0';
 
-    writeInd += len;
-    cookiePot[writeInd - 1] = '\0';
+    ret = kstrtol(pid_buf, 10, &pid);
+    if (ret < 0 || pid <= 0)
+        return -EINVAL;
 
+    stored_pid = (pid_t)pid;
+    stat_len = 0;
     return len;
 }
 
-
-static ssize_t fortuneRead(struct file *file, char __user *buf,
-                           size_t len, loff_t *fPos)
+static ssize_t fortune_read(struct file *file,
+                            char __user *ubuf,
+                            size_t count, loff_t *ppos)
 {
-    int readLen;
+    char **fields;
+    char *p, *tmp;
+    ssize_t fetched, out_len = 0;
+    char *out_buf;
+    int i;
 
-    printk(KERN_INFO "fortune: read called\n");
-
-    if ((*fPos > 0) || (writeInd == 0))
+    if (*ppos > 0)
         return 0;
+    if (stored_pid <= 0)
+        return -EINVAL;
 
-    if (readInd >= writeInd)
-        readInd = 0;
-
-    readLen = snprintf(tmpBuf, COOKIE_POT_SIZE, "%s\n", &cookiePot[readInd]);
-
-    if (copy_to_user(buf, tmpBuf, readLen) != 0)
-    {
-        printk(KERN_ERR "fortune: copy_to_user error\n");
-        return -EFAULT;
+    if (stat_len == 0) {
+        fetched = fetch_stat(stored_pid);
+        if (fetched < 0)
+            return fetched;
+        stat_len = fetched;
     }
 
-    readInd += readLen;
-    *fPos += readLen;
+    tmp = kstrdup(stat_buf, GFP_KERNEL);
+    if (!tmp)
+        return -ENOMEM;
 
-    return readLen;
+    fields = kmalloc_array(52, sizeof(char *), GFP_KERNEL);
+    if (!fields) {
+        kfree(tmp);
+        return -ENOMEM;
+    }
+
+    p = tmp;
+    for (i = 0; i < 52; i++) {
+        if (!p) break;
+        fields[i] = strsep(&p, " ");
+    }
+    kfree(tmp);
+
+    out_buf = vmalloc(OUT_BUF_SIZE);
+    if (!out_buf) {
+        kfree(fields);
+        return -ENOMEM;
+    }
+    for (i = 0; i < 52; i++) {
+        out_len += scnprintf(out_buf + out_len,
+                             OUT_BUF_SIZE - out_len,
+                             stat_no_descr[i],
+                             fields[i] ? fields[i] : "");
+    }
+    kfree(fields);
+
+    if (out_len > count)
+        out_len = count;
+    if (copy_to_user(ubuf, out_buf, out_len))
+        out_len = -EFAULT;
+
+    *ppos = out_len;
+    vfree(out_buf);
+    return out_len;
 }
 
-
-static const struct proc_ops fops =
-{
-    .proc_open = fortuneOpen,
-    .proc_read = fortuneRead,
-    .proc_write = fortuneWrite,
-    .proc_release = fortuneRelease
+static const struct proc_ops fops = {
+    .proc_open    = fortune_open,
+    .proc_read    = fortune_read,
+    .proc_write   = fortune_write,
+    .proc_release = fortune_release,
 };
 
-
-static int __init md_init(void)
+static int __init fortune_init(void)
 {
-    printk(KERN_INFO "fortune: init\n");
+    pr_info("fortune_pid: init\n");
 
-    if ((cookiePot = vmalloc(COOKIE_POT_SIZE)) == NULL)
-    {
-        printk(KERN_ERR "fortune: memory error\n");
+    stat_buf = vmalloc(STAT_BUF_SIZE);
+    if (!stat_buf)
+        return -ENOMEM;
+
+    fortune_dir = proc_mkdir(DIRNAME, NULL);
+    if (!fortune_dir) {
+        vfree(stat_buf);
         return -ENOMEM;
     }
 
-    memset(cookiePot, 0, COOKIE_POT_SIZE);
-
-    if ((fortuneDir = proc_mkdir(DIRNAME, NULL)) == NULL)
-    {
-        printk(KERN_ERR "fortune: create dir err\n");
-        freeMemory();
-
+    fortune_file = proc_create(FILENAME, 0666, fortune_dir, &fops);
+    if (!fortune_file) {
+        remove_proc_entry(DIRNAME, NULL);
+        vfree(stat_buf);
         return -ENOMEM;
     }
 
-    if ((fortuneFile = proc_create(FILENAME, 0666, fortuneDir, &fops)) == NULL)
-    {
-        printk(KERN_ERR "fortune: create file err\n");
-        freeMemory();
-
+    fortune_link = proc_symlink(SYMLINK, NULL, FILEPATH);
+    if (!fortune_link) {
+        remove_proc_entry(FILENAME, fortune_dir);
+        remove_proc_entry(DIRNAME, NULL);
+        vfree(stat_buf);
         return -ENOMEM;
     }
-
-    if ((fortuneLink = proc_symlink(SYMLINK, NULL, FILEPATH)) == NULL)
-    {
-        printk(KERN_ERR "fortune: create link err\n");
-        freeMemory();
-
-        return -ENOMEM;
-    }
-
-    readInd = 0;
-    writeInd = 0;
-
-    printk(KERN_INFO "fortune: loaded\n");
 
     return 0;
 }
 
-
-static void __exit md_exit(void)
+static void __exit fortune_exit(void)
 {
-    printk(KERN_INFO "fortune: exit\n");
-    freeMemory();
+    pr_info("fortune_pid: exit\n");
+    remove_proc_entry(SYMLINK, NULL);
+    remove_proc_entry(FILENAME, fortune_dir);
+    remove_proc_entry(DIRNAME, NULL);
+    vfree(stat_buf);
 }
 
-
-module_init(md_init);
-module_exit(md_exit);
+module_init(fortune_init);
+module_exit(fortune_exit);
