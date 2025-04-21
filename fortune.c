@@ -1,5 +1,3 @@
-/*  fortune_pid.c ─ пример без goto с логированием всех действий через printk(KERN_ERR) и описанным выводом /proc/<pid>/stat  */
-
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/vmalloc.h>
@@ -10,7 +8,7 @@
 #include <linux/slab.h>
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Maslova Marina (PID‑версия, логгирование через printk)");
+MODULE_AUTHOR("OLEG DOKUCHAEV");
 
 #define DIRNAME   "fortuneDir"
 #define FILENAME  "fortuneFile"
@@ -30,16 +28,16 @@ static ssize_t  stat_len;
 static pid_t    stored_pid = -1;
 
 static const char *task_descr =
-        "(1) pid            '%d'"
-        "(2) comm           '%s'"
-        "(3) ppid           '%d'"
-        "(4) tgid           '%d'"
-        "(5) flags          '0x%lx'"
-        "(6) priority       '%d'"
-        "(7) nice           '%d'"
-        "(8) num_threads   '%d'"
-        "(9) mm->total_vm  '%lu'"
-        "(10) start_time    '%llu'";
+        "(1) pid            '%d'\n"
+        "(2) comm           '%s'\n"
+        "(3) ppid           '%d'\n"
+        "(4) tgid           '%d'\n"
+        "(5) flags          '0x%lx'\n"
+        "(6) priority       '%d'\n"
+        "(7) nice           '%d'\n"
+        "(8) num_threads   '%d'\n"
+        "(9) mm->total_vm  '%lu'\n"
+        "(10) start_time    '%llu'\n";
 
 static int fortune_open(struct inode *inode, struct file *file)
 {
@@ -84,9 +82,7 @@ static ssize_t fortune_write(struct file *file,
     return len;
 }
 
-static ssize_t fortune_read(struct file *file,
-                            char __user *ubuf,
-                            size_t count, loff_t *ppos)
+static ssize_t fortune_read(struct file *file, char __user *ubuf, size_t count, loff_t *ppos)
 {
     struct pid *pid_struct;
     struct task_struct *task;
