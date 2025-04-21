@@ -34,25 +34,21 @@ static const char *task_descr =
 "
     "(2) comm           '%s'
 "
-    "(3) state          '%ld'
+    "(3) ppid           '%d'
 "
-    "(4) ppid           '%d'
+    "(4) tgid           '%d'
 "
-    "(5) tgid           '%d'
+    "(5) flags          '0x%lx'
 "
-    "(6) session        '%d'
+    "(6) priority       '%d'
 "
-    "(7) flags          '0x%lx'
+    "(7) nice           '%d'
 "
-    "(8) priority       '%d'
+    "(8) num_threads   '%d'
 "
-    "(9) nice           '%d'
+    "(9) mm->total_vm  '%lu'
 "
-    "(10) num_threads   '%d'
-"
-    "(11) mm->total_vm  '%lu'
-"
-    "(12) start_time    '%llu'
+    "(10) start_time    '%llu'
 ";
 
 static int fortune_open(struct inode *inode, struct file *file)
@@ -137,22 +133,18 @@ static ssize_t fortune_read(struct file *file,
     }
 
     /* Формируем вывод */
-    rcu_read_lock();
     out_len = scnprintf(out_buf, OUT_BUF_SIZE,
         task_descr,
         task->pid,
         task->comm,
-        task->state,
         task->real_parent->pid,
         task->tgid,
-        task->signal->session->leader->pid,
         task->flags,
         task->prio,
         task_nice(task),
         task->signal->nr_threads,
         task->mm ? task->mm->total_vm : 0UL,
         task->start_time);
-    rcu_read_unlock();
 
     if (out_len > count)
         out_len = count;
