@@ -30,18 +30,30 @@ static ssize_t  stat_len;
 static pid_t    stored_pid = -1;
 
 static const char *task_descr =
-    "(1) pid           '%d'\n"
-    "(2) comm          '%s'\n"
-    "(3) state         '%ld'\n"
-    "(4) ppid          '%d'\n"
-    "(5) tgid          '%d'\n"
-    "(6) session_leader '%d'\n"
-    "(7) flags         '0x%lx'\n"
-    "(8) priority      '%d'\n"
-    "(9) nice          '%d'\n"
-    "(10) num_threads  '%d'\n"
-    "(11) mm->total_vm '%lu'\n"
-    "(12) start_time   '%llu'\n";
+    "(1) pid            '%d'
+"
+    "(2) comm           '%s'
+"
+    "(3) state          '%ld'
+"
+    "(4) ppid           '%d'
+"
+    "(5) tgid           '%d'
+"
+    "(6) session        '%d'
+"
+    "(7) flags          '0x%lx'
+"
+    "(8) priority       '%d'
+"
+    "(9) nice           '%d'
+"
+    "(10) num_threads   '%d'
+"
+    "(11) mm->total_vm  '%lu'
+"
+    "(12) start_time    '%llu'
+";
 
 static int fortune_open(struct inode *inode, struct file *file)
 {
