@@ -35,9 +35,10 @@ static const char *task_descr =
         "(5) flags          '0x%lx'\n"
         "(6) priority       '%d'\n"
         "(7) nice           '%d'\n"
-        "(8) num_threads   '%d'\n"
-        "(9) mm->total_vm  '%lu'\n"
-        "(10) start_time    '%llu'\n";
+        "(8) num_threads    '%d'\n"
+        "(9) mm->total_vm   '%lu'\n"
+        "(10) start_time    '%llu'\n"
+        "(11) state         '%d'\n";
 
 static int fortune_open(struct inode *inode, struct file *file)
 {
@@ -130,7 +131,8 @@ static ssize_t fortune_read(struct file *file, char __user *ubuf, size_t count, 
         task_nice(task),
         task->signal->nr_threads,
         task->mm ? task->mm->total_vm : 0UL,
-        task->start_time);
+        task->start_time,
+        task->__state);
 
     if (out_len > count)
         out_len = count;
