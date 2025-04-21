@@ -29,87 +29,19 @@ static char    *stat_buf;
 static ssize_t  stat_len;
 static pid_t    stored_pid = -1;
 
-/* Форматы и описания полей /proc/<pid>/stat */
-static const char *stat_no_descr[] = {
-    "(1) pid           '%s'\n",
-    "(2) comm          '%s'\n",
-    "(3) state         '%s'\n",
-    "(4) ppid          '%s'\n",
-    "(5) pgrp          '%s'\n",
-    "(6) session       '%s'\n",
-    "(7) tty_nr        '%s'\n",
-    "(8) tpgid         '%s'\n",
-    "(9) flags         '%s'\n",
-    "(10) minflt       '%s'\n",
-    "(11) cminflt      '%s'\n",
-    "(12) majflt       '%s'\n",
-    "(13) cmajflt      '%s'\n",
-    "(14) utime        '%s'\n",
-    "(15) stime        '%s'\n",
-    "(16) cutime       '%s'\n",
-    "(17) cstime       '%s'\n",
-    "(18) priority     '%s'\n",
-    "(19) nice         '%s'\n",
-    "(20) num_threads  '%s'\n",
-    "(21) itrealvalue  '%s'\n",
-    "(22) starttime    '%s'\n",
-    "(23) vsize        '%s'\n",
-    "(24) rss          '%s'\n",
-    "(25) rsslim       '%s'\n",
-    "(26) startcode    '%s'\n",
-    "(27) endcode      '%s'\n",
-    "(28) startstack   '%s'\n",
-    "(29) kstkesp      '%s'\n",
-    "(30) kstkeip      '%s'\n",
-    "(31) signal       '%s'\n",
-    "(32) blocked      '%s'\n",
-    "(33) sigignore    '%s'\n",
-    "(34) sigcatch     '%s'\n",
-    "(35) wchan        '%s'\n",
-    "(36) nswap        '%s'\n",
-    "(37) cnswap       '%s'\n",
-    "(38) exit_signal  '%s'\n",
-    "(39) processor    '%s'\n",
-    "(40) rt_priority  '%s'\n",
-    "(41) policy       '%s'\n",
-    "(42) delayacct_blkio_ticks '%s'\n",
-    "(43) guest_time   '%s'\n",
-    "(44) cguest_time  '%s'\n",
-    "(45) start_data   '%s'\n",
-    "(46) end_data     '%s'\n",
-    "(47) start_brk    '%s'\n",
-    "(48) arg_start    '%s'\n",
-    "(49) arg_end      '%s'\n",
-    "(50) env_start    '%s'\n",
-    "(51) env_end      '%s'\n",
-    "(52) exit_code    '%s'\n"
-};
-
-static ssize_t fetch_stat(pid_t pid)
-{
-    char path[32];
-    struct file *filp;
-    loff_t pos = 0;
-    ssize_t n;
-
-    printk(KERN_ERR "+ fortune_pid: fetch_stat start for pid=%d\n", pid);
-    snprintf(path, sizeof(path), "/proc/%d/stat", pid);
-    filp = filp_open(path, O_RDONLY, 0);
-    if (IS_ERR(filp)) {
-        printk(KERN_ERR "+ fortune_pid: fetch_stat filp_open error %ld\n", PTR_ERR(filp));
-        return PTR_ERR(filp);
-    }
-    printk(KERN_ERR "+ fortune_pid: opened %s\n", path);
-
-    n = kernel_read(filp, stat_buf, STAT_BUF_SIZE - 1, &pos);
-    filp_close(filp, NULL);
-    printk(KERN_ERR "+ fortune_pid: read %zd bytes from %s\n", n, path);
-
-    if (n > 0)
-        stat_buf[n] = '\0';
-    printk(KERN_ERR "+ fortune_pid: fetch_stat completed\n");
-    return n;
-}
+static const char *task_descr =
+    "(1) pid           '%d'\n"
+    "(2) comm          '%s'\n"
+    "(3) state         '%ld'\n"
+    "(4) ppid          '%d'\n"
+    "(5) tgid          '%d'\n"
+    "(6) session_leader '%d'\n"
+    "(7) flags         '0x%lx'\n"
+    "(8) priority      '%d'\n"
+    "(9) nice          '%d'\n"
+    "(10) num_threads  '%d'\n"
+    "(11) mm->total_vm '%lu'\n"
+    "(12) start_time   '%llu'\n";
 
 static int fortune_open(struct inode *inode, struct file *file)
 {
@@ -158,77 +90,69 @@ static ssize_t fortune_read(struct file *file,
                             char __user *ubuf,
                             size_t count, loff_t *ppos)
 {
-    char **fields;
-    char *p, *tmp;
-    ssize_t fetched, out_len = 0;
+    struct pid *pid_struct;
+    struct task_struct *task;
     char *out_buf;
-    int i;
+    ssize_t out_len;
+    int ret;
 
     printk(KERN_ERR "+ fortune_pid: read called, count=%zu, pos=%lld\n", count, *ppos);
-    if (*ppos > 0) {
-        printk(KERN_ERR "+ fortune_pid: read EOF\n");
+    if (*ppos > 0)
         return 0;
-    }
     if (stored_pid <= 0) {
-        printk(KERN_ERR "+ fortune_pid: read no PID stored\n");
+        printk(KERN_ERR "+ fortune_pid: no PID stored\n");
         return -EINVAL;
     }
 
-    if (stat_len == 0) {
-        fetched = fetch_stat(stored_pid);
-        if (fetched < 0) {
-            printk(KERN_ERR "+ fortune_pid: fetch_stat failed %zd\n", fetched);
-            return fetched;
-        }
-        stat_len = fetched;
+    pid_struct = find_get_pid(stored_pid);
+    if (!pid_struct) {
+        printk(KERN_ERR "+ fortune_pid: find_get_pid failed for %d\n", stored_pid);
+        return -ESRCH;
     }
 
-    printk(KERN_ERR "+ fortune_pid: parsing stat buffer\n");
-    tmp = kstrdup(stat_buf, GFP_KERNEL);
-    if (!tmp) {
-        printk(KERN_ERR "+ fortune_pid: kstrdup failed\n");
-        return -ENOMEM;
+    task = pid_task(pid_struct, PIDTYPE_PID);
+    put_pid(pid_struct);
+    if (!task) {
+        printk(KERN_ERR "+ fortune_pid: pid_task returned NULL for %d\n", stored_pid);
+        return -ESRCH;
     }
 
-    fields = kmalloc_array(52, sizeof(char *), GFP_KERNEL);
-    if (!fields) {
-        printk(KERN_ERR "+ fortune_pid: kmalloc_array failed\n");
-        kfree(tmp);
-        return -ENOMEM;
-    }
-
-    p = tmp;
-    for (i = 0; i < 52 && p; i++) {
-        fields[i] = strsep(&p, " ");
-    }
-    printk(KERN_ERR "+ fortune_pid: split into %d fields\n", i);
-    kfree(tmp);
-
-    out_buf = vmalloc(OUT_BUF_SIZE);
+    /* Выделяем буфер для вывода */
+    out_buf = kmalloc(OUT_BUF_SIZE, GFP_KERNEL);
     if (!out_buf) {
-        printk(KERN_ERR "+ fortune_pid: vmalloc out_buf failed\n");
-        kfree(fields);
+        printk(KERN_ERR "+ fortune_pid: kmalloc out_buf failed\n");
         return -ENOMEM;
     }
-    printk(KERN_ERR "+ fortune_pid: formatting output\n");
-    for (i = 0; i < 52; i++) {
-        out_len += scnprintf(out_buf + out_len,
-                             OUT_BUF_SIZE - out_len,
-                             stat_no_descr[i],
-                             fields[i] ? fields[i] : "");
-    }
-    kfree(fields);
+
+    /* Формируем вывод */
+    rcu_read_lock();
+    out_len = scnprintf(out_buf, OUT_BUF_SIZE,
+        task_descr,
+        task->pid,
+        task->comm,
+        task->state,
+        task->real_parent->pid,
+        task->tgid,
+        task->signal->session->leader->pid,
+        task->flags,
+        task->prio,
+        task_nice(task),
+        task->signal->nr_threads,
+        task->mm ? task->mm->total_vm : 0UL,
+        task->start_time);
+    rcu_read_unlock();
 
     if (out_len > count)
         out_len = count;
-    if (copy_to_user(ubuf, out_buf, out_len)) {
-        printk(KERN_ERR "+ fortune_pid: copy_to_user in read failed\n");
-        out_len = -EFAULT;
+    ret = copy_to_user(ubuf, out_buf, out_len);
+    kfree(out_buf);
+    if (ret) {
+        printk(KERN_ERR "+ fortune_pid: copy_to_user failed\n");
+        return -EFAULT;
     }
-    printk(KERN_ERR "+ fortune_pid: read returning %zu bytes\n", out_len);
 
     *ppos = out_len;
-    vfree(out_buf);
+    printk(KERN_ERR "+ fortune_pid: read returning %zd bytes\n", out_len);
     return out_len;
 }
 
