@@ -101,13 +101,7 @@ static ssize_t fetch_stat(pid_t pid)
     }
     printk(KERN_ERR "+ fortune_pid: opened %s\n", path);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,10,0)
     n = kernel_read(filp, stat_buf, STAT_BUF_SIZE - 1, &pos);
-#else
-    mm_segment_t old_fs = get_fs(); set_fs(KERNEL_DS);
-    n = vfs_read(filp, stat_buf, STAT_BUF_SIZE - 1, &pos);
-    set_fs(old_fs);
-#endif
     filp_close(filp, NULL);
     printk(KERN_ERR "+ fortune_pid: read %zd bytes from %s\n", n, path);
 
