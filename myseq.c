@@ -2,6 +2,7 @@
 #include <linux/module.h>
 #include <linux/seq_file.h>
 #include <linux/printk.h>
+#include "myseq.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Oleg Dokuchaev");
