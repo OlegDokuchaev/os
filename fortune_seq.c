@@ -75,7 +75,7 @@ static int fortune_show(struct seq_file *m, void *v)
     my_seq_printf(m, "COMM: %s\n", task->comm);
     my_seq_printf(m, "PPID: %d\n", task->real_parent->pid);
     my_seq_printf(m, "TGID: %d\n", task->tgid);
-    my_seq_printf(m, "STATE: %ld\n", task->state);
+    my_seq_printf(m, "STATE: %ld\n", task->__state);
     my_seq_printf(m, "FLAGS: 0x%lx\n", task->flags);
     my_seq_printf(m, "PRIO: %d\n", task->prio);
     my_seq_printf(m, "NICE: %d\n", task_nice(task));
