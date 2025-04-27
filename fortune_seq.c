@@ -117,7 +117,6 @@ static const struct proc_ops fops = {
 
 static int __init fortune_init(void)
 {
-    int ret;
     printk(KERN_ERR "+ fortune_pid_seq: init start\n");
 
     fortune_dir = proc_mkdir(DIRNAME, NULL);
