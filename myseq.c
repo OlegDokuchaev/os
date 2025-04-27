@@ -7,7 +7,7 @@
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Oleg Dokuchaev");
 
-static int my_single_open(struct file *file,
+extern int my_single_open(struct file *file,
                           int (*show)(struct seq_file *, void *),
                           void *data)
 {
@@ -15,7 +15,7 @@ static int my_single_open(struct file *file,
     return single_open(file, show, data);
 }
 
-static ssize_t my_seq_read(struct file *file, char __user *buf,
+extern ssize_t my_seq_read(struct file *file, char __user *buf,
                            size_t size, loff_t *ppos)
 {
     ssize_t ret;
@@ -25,13 +25,13 @@ static ssize_t my_seq_read(struct file *file, char __user *buf,
     return ret;
 }
 
-static int my_single_release(struct inode *inode, struct file *file)
+extern int my_single_release(struct inode *inode, struct file *file)
 {
     printk(KERN_ERR "+ myseq: my_single_release\n");
     return single_release(inode, file);
 }
 
-static void my_seq_printf(struct seq_file *m, const char *fmt, ...)
+extern void my_seq_printf(struct seq_file *m, const char *fmt, ...)
 {
     va_list args;
     printk(KERN_ERR "+ myseq: my_seq_printf\n");
@@ -40,7 +40,7 @@ static void my_seq_printf(struct seq_file *m, const char *fmt, ...)
     va_end(args);
 }
 
-static void my_seq_puts(struct seq_file *m, const char *s)
+extern void my_seq_puts(struct seq_file *m, const char *s)
 {
     printk(KERN_ERR "+ myseq: my_seq_puts \"%s\"\n", s);
     seq_puts(m, s);
