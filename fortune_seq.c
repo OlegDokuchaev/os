@@ -108,12 +108,11 @@ static int fortune_open(struct inode *inode, struct file *file)
     return my_single_open(file, fortune_show, NULL);
 }
 
-static const struct file_operations fortune_fops = {
-    .owner   = THIS_MODULE,
-    .open    = fortune_open,
-    .read    = fortune_read,
-    .release = fortune_release,
-    .write   = fortune_write,
+static const struct proc_ops fops = {
+    .proc_open    = fortune_open,
+    .proc_read    = fortune_read,
+    .proc_write   = fortune_write,
+    .proc_release = fortune_release,
 };
 
 static int __init fortune_init(void)
@@ -128,7 +127,7 @@ static int __init fortune_init(void)
     }
     printk(KERN_ERR "+ fortune_pid_seq: created /proc/%s\n", DIRNAME);
 
-    fortune_file = proc_create(FILENAME, 0666, fortune_dir, &fortune_fops);
+    fortune_file = proc_create(FILENAME, 0666, fortune_dir, &fops);
     if (!fortune_file) {
         printk(KERN_ERR "+ fortune_pid_seq: proc_create failed\n");
         remove_proc_entry(DIRNAME, NULL);
