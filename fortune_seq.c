@@ -110,8 +110,8 @@ static int my_seq_show(struct seq_file *m, void *v)
     seq_printf(m, "COMM: %s\n", task->comm);
     seq_printf(m, "PPID: %d\n", task->real_parent->pid);
     seq_printf(m, "TGID: %d\n", task->tgid);
-    seq_printf(m, "STATE: %ld\n", task->__state);
-    seq_printf(m, "FLAGS: 0x%lx\n", task->flags);
+    seq_printf(m, "STATE: %l=d\n", task->__state);
+    seq_printf(m, "FLAGS: 0x%x\n", task->flags);
     seq_printf(m, "PRIO: %d\n", task->prio);
     seq_printf(m, "NICE: %d\n", task_nice(task));
     seq_printf(m, "NUM_THREADS: %d\n", task->signal->nr_threads);
@@ -128,7 +128,7 @@ static struct seq_operations my_seq_ops = {
 ​  .show  = my_seq_show
 };
 
-int my_seq_open(struct inode *inode, struct file *file)
+static int my_seq_open(struct inode *inode, struct file *file)
 {
     printk(KERN_ERR "+ myseq: my_open\n");
     return seq_open(file, &my_seq_ops);
