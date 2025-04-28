@@ -58,40 +58,40 @@ static int my_seq_release(struct inode *inode, struct file *file)
     return ret;
 }
 
-static ssize_t fortune_write(struct file *file,
+static ssize_t my_seq_write(struct file *file,
                              const char __user *ubuf,
                              size_t len, loff_t *ppos)
 {
     char buf[PID_BUF_SIZE];
     long pid;
-    printk(KERN_ERR "+ fortune_pid_seq: write called, len=%zu\n", len);
+    printk(KERN_ERR "+ myseq: write called, len=%zu\n", len);
     if (len == 0 || len >= PID_BUF_SIZE) {
-        printk(KERN_ERR "+ fortune_pid_seq: invalid write length %zu\n", len);
+        printk(KERN_ERR "+ myseq: invalid write length %zu\n", len);
         return -EINVAL;
     }
     if (copy_from_user(buf, ubuf, len)) {
-        printk(KERN_ERR "+ fortune_pid_seq: copy_from_user failed\n");
+        printk(KERN_ERR "+ myseq: copy_from_user failed\n");
         return -EFAULT;
     }
     buf[len] = '\0';
     if (kstrtol(buf, 10, &pid) < 0 || pid <= 0) {
-        printk(KERN_ERR "+ fortune_pid_seq: invalid pid '%s'\n", buf);
+        printk(KERN_ERR "+ myseq: invalid pid '%s'\n", buf);
         return -EINVAL;
     }
     stored_pid = (pid_t)pid;
-    printk(KERN_ERR "+ fortune_pid_seq: stored_pid set to %d\n", stored_pid);
+    printk(KERN_ERR "+ myseq: stored_pid set to %d\n", stored_pid);
     *ppos = len;
     return len;
 }
 
-static int fortune_show(struct seq_file *m, void *v)
+static int my_seq_show(struct seq_file *m, void *v)
 {
     struct pid *pid_struct;
     struct task_struct *task;
-    printk(KERN_ERR "+ fortune_pid_seq: show called\n");
+    printk(KERN_ERR "+ myseq: show called\n");
 
     if (stored_pid <= 0) {
-        printk(KERN_ERR "+ fortune_pid_seq: no PID stored\n");
+        printk(KERN_ERR "+ myseq: no PID stored\n");
         my_seq_puts(m, "No PID stored\n");
         return 0;
     }
@@ -100,12 +100,12 @@ static int fortune_show(struct seq_file *m, void *v)
     task = pid_task(pid_struct, PIDTYPE_PID);
     put_pid(pid_struct);
     if (!task) {
-        printk(KERN_ERR "+ fortune_pid_seq: pid_task returned NULL for %d\n", stored_pid);
+        printk(KERN_ERR "+ myseq: pid_task returned NULL for %d\n", stored_pid);
         my_seq_printf(m, "PID %d not found\n", stored_pid);
         return 0;
     }
 
-    printk(KERN_ERR "+ fortune_pid_seq: formatting output for PID %d\n", stored_pid);
+    printk(KERN_ERR "+ myseq: formatting output for PID %d\n", stored_pid);
 
     my_seq_printf(m, "PID: %d\n", task->pid);
     my_seq_printf(m, "COMM: %s\n", task->comm);
@@ -126,7 +126,7 @@ static struct seq_operations my_seq_ops = {
 ​  .start = my_seq_start,
 ​  .next  = my_seq_next,
 ​  .stop  = my_seq_stop,
-​  .show  = fortune_show
+​  .show  = my_seq_show
 };
 
 int my_seq_open(struct inode *inode, struct file *file)
@@ -138,7 +138,7 @@ int my_seq_open(struct inode *inode, struct file *file)
 static const struct proc_ops fops = {
     .proc_open    = my_seq_open,
     .proc_read    = my_seq_read,
-    .proc_write   = fortune_write,
+    .proc_write   = my_seq_write,
     .proc_release = my_seq_release,
 };
 
