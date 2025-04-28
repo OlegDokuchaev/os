@@ -44,7 +44,6 @@ static ssize_t my_seq_read(struct file *file, char __user *buf,
     ssize_t ret;
     printk(KERN_ERR "+ myseq: my_seq_read called, count=%zu, pos=%lld\n", count, *ppos);
     ret = seq_read(file, buf, count, ppos);
-    printk(KERN_ERR "+ myseq: my_seq_read returned %zd\n", ret);
     return ret;
 }
 
@@ -53,7 +52,6 @@ static int my_seq_release(struct inode *inode, struct file *file)
     int ret;
     printk(KERN_ERR "+ myseq: my_seq_release called\n");
     ret = single_release(inode, file);
-    printk(KERN_ERR "+ myseq: my_seq_release returned %d\n", ret);
     return ret;
 }
 
@@ -65,20 +63,16 @@ static ssize_t my_seq_write(struct file *file,
     long pid;
     printk(KERN_ERR "+ myseq: write called, len=%zu\n", len);
     if (len == 0 || len >= PID_BUF_SIZE) {
-        printk(KERN_ERR "+ myseq: invalid write length %zu\n", len);
         return -EINVAL;
     }
     if (copy_from_user(buf, ubuf, len)) {
-        printk(KERN_ERR "+ myseq: copy_from_user failed\n");
         return -EFAULT;
     }
     buf[len] = '\0';
     if (kstrtol(buf, 10, &pid) < 0 || pid <= 0) {
-        printk(KERN_ERR "+ myseq: invalid pid '%s'\n", buf);
         return -EINVAL;
     }
     stored_pid = (pid_t)pid;
-    printk(KERN_ERR "+ myseq: stored_pid set to %d\n", stored_pid);
     *ppos = len;
     return len;
 }
@@ -90,8 +84,6 @@ static int my_seq_show(struct seq_file *m, void *v)
     printk(KERN_ERR "+ myseq: show called\n");
 
     if (stored_pid <= 0) {
-        printk(KERN_ERR "+ myseq: no PID stored\n");
-        seq_puts(m, "No PID stored\n");
         return 0;
     }
 
@@ -99,12 +91,8 @@ static int my_seq_show(struct seq_file *m, void *v)
     task = pid_task(pid_struct, PIDTYPE_PID);
     put_pid(pid_struct);
     if (!task) {
-        printk(KERN_ERR "+ myseq: pid_task returned NULL for %d\n", stored_pid);
-        seq_printf(m, "PID %d not found\n", stored_pid);
         return 0;
     }
-
-    printk(KERN_ERR "+ myseq: formatting output for PID %d\n", stored_pid);
 
     seq_printf(m, "PID: %d\n", task->pid);
     seq_printf(m, "COMM: %s\n", task->comm);
@@ -147,29 +135,22 @@ static int __init fortune_init(void)
 
     fortune_dir = proc_mkdir(DIRNAME, NULL);
     if (!fortune_dir) {
-        printk(KERN_ERR "+ fortune_pid_seq: proc_mkdir failed\n");
         return -ENOMEM;
     }
-    printk(KERN_ERR "+ fortune_pid_seq: created /proc/%s\n", DIRNAME);
 
     fortune_file = proc_create(FILENAME, 0666, fortune_dir, &fops);
     if (!fortune_file) {
-        printk(KERN_ERR "+ fortune_pid_seq: proc_create failed\n");
         remove_proc_entry(DIRNAME, NULL);
         return -ENOMEM;
     }
-    printk(KERN_ERR "+ fortune_pid_seq: created /proc/%s/%s\n", DIRNAME, FILENAME);
 
     fortune_link = proc_symlink(SYMLINK, NULL, FILEPATH);
     if (!fortune_link) {
-        printk(KERN_ERR "+ fortune_pid_seq: proc_symlink failed\n");
         remove_proc_entry(FILENAME, fortune_dir);
         remove_proc_entry(DIRNAME, NULL);
         return -ENOMEM;
     }
-    printk(KERN_ERR "+ fortune_pid_seq: created /proc/%s (symlink) -> %s\n", SYMLINK, FILEPATH);
-
-    printk(KERN_ERR "+ fortune_pid_seq: init completed\n");
+    
     return 0;
 }
 
@@ -177,12 +158,8 @@ static void __exit fortune_exit(void)
 {
     printk(KERN_ERR "+ fortune_pid_seq: exit start\n");
     remove_proc_entry(SYMLINK, NULL);
-    printk(KERN_ERR "+ fortune_pid_seq: removed symlink %s\n", SYMLINK);
     remove_proc_entry(FILENAME, fortune_dir);
-    printk(KERN_ERR "+ fortune_pid_seq: removed file %s\n", FILENAME);
     remove_proc_entry(DIRNAME, NULL);
-    printk(KERN_ERR "+ fortune_pid_seq: removed directory %s\n", DIRNAME);
-    printk(KERN_ERR "+ fortune_pid_seq: exit completed\n");
 }
 
 module_init(fortune_init);
