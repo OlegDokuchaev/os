@@ -30,13 +30,12 @@ static void *my_seq_start(struct seq_file *m, loff_t *pos)
 static void *my_seq_next(struct seq_file *m, void *v, loff_t *pos)
 {
     printk(KERN_ERR "+ myseq: next called, pos=%lld, v=%p\n", *pos, v);
-    return single_next(m, v, pos);
+    return NULL;
 }
 
 static void my_seq_stop(struct seq_file *m, void *v)
 {
     printk(KERN_ERR "+ myseq: stop called, v=%p\n", v);
-    single_stop(m, v);
 }
 
 static ssize_t my_seq_read(struct file *file, char __user *buf,
@@ -92,7 +91,7 @@ static int my_seq_show(struct seq_file *m, void *v)
 
     if (stored_pid <= 0) {
         printk(KERN_ERR "+ myseq: no PID stored\n");
-        my_seq_puts(m, "No PID stored\n");
+        seq_puts(m, "No PID stored\n");
         return 0;
     }
 
@@ -101,23 +100,23 @@ static int my_seq_show(struct seq_file *m, void *v)
     put_pid(pid_struct);
     if (!task) {
         printk(KERN_ERR "+ myseq: pid_task returned NULL for %d\n", stored_pid);
-        my_seq_printf(m, "PID %d not found\n", stored_pid);
+        seq_printf(m, "PID %d not found\n", stored_pid);
         return 0;
     }
 
     printk(KERN_ERR "+ myseq: formatting output for PID %d\n", stored_pid);
 
-    my_seq_printf(m, "PID: %d\n", task->pid);
-    my_seq_printf(m, "COMM: %s\n", task->comm);
-    my_seq_printf(m, "PPID: %d\n", task->real_parent->pid);
-    my_seq_printf(m, "TGID: %d\n", task->tgid);
-    my_seq_printf(m, "STATE: %ld\n", task->__state);
-    my_seq_printf(m, "FLAGS: 0x%lx\n", task->flags);
-    my_seq_printf(m, "PRIO: %d\n", task->prio);
-    my_seq_printf(m, "NICE: %d\n", task_nice(task));
-    my_seq_printf(m, "NUM_THREADS: %d\n", task->signal->nr_threads);
-    my_seq_printf(m, "TOTAL_VM: %lu\n", task->mm ? task->mm->total_vm : 0UL);
-    my_seq_printf(m, "START_TIME: %llu\n", task->start_time);
+    seq_printf(m, "PID: %d\n", task->pid);
+    seq_printf(m, "COMM: %s\n", task->comm);
+    seq_printf(m, "PPID: %d\n", task->real_parent->pid);
+    seq_printf(m, "TGID: %d\n", task->tgid);
+    seq_printf(m, "STATE: %ld\n", task->__state);
+    seq_printf(m, "FLAGS: 0x%lx\n", task->flags);
+    seq_printf(m, "PRIO: %d\n", task->prio);
+    seq_printf(m, "NICE: %d\n", task_nice(task));
+    seq_printf(m, "NUM_THREADS: %d\n", task->signal->nr_threads);
+    seq_printf(m, "TOTAL_VM: %lu\n", task->mm ? task->mm->total_vm : 0UL);
+    seq_printf(m, "START_TIME: %llu\n", task->start_time);
 
     return 0;
 }
