@@ -118,7 +118,7 @@ static struct seq_operations my_seq_ops = {
 
 static int my_seq_open(struct inode *inode, struct file *file)
 {
-    printk(KERN_ERR "+ myseq: my_open\n");
+    printk(KERN_ERR "+ myseq: single_open\n");
     return single_open(file, my_seq_show, NULL);
 }
 
