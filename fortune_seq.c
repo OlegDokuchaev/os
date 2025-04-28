@@ -24,7 +24,7 @@ static pid_t stored_pid = -1;
 static void *my_seq_start(struct seq_file *m, loff_t *pos)
 {
     printk(KERN_ERR "+ myseq: start called, pos=%lld\n", *pos);
-    return single_start(m, pos);
+    return NULL;
 }
 
 static void *my_seq_next(struct seq_file *m, void *v, loff_t *pos)
@@ -131,7 +131,7 @@ static struct seq_operations my_seq_ops = {
 static int my_seq_open(struct inode *inode, struct file *file)
 {
     printk(KERN_ERR "+ myseq: my_open\n");
-    return seq_open(file, &my_seq_ops);
+    return single_open(file, my_seq_show, NULL);
 }
 
 static const struct proc_ops fops = {
