@@ -122,10 +122,10 @@ static int my_seq_show(struct seq_file *m, void *v)
 }
 
 static struct seq_operations my_seq_ops = {
-​  .start = my_seq_start,
-​  .next  = my_seq_next,
-​  .stop  = my_seq_stop,
-​  .show  = my_seq_show
+.start = my_seq_start,
+.next  = my_seq_next,
+.stop  = my_seq_stop,
+.show  = my_seq_show
 };
 
 static int my_seq_open(struct inode *inode, struct file *file)
@@ -138,7 +138,7 @@ static const struct proc_ops fops = {
     .proc_open    = my_seq_open,
     .proc_read    = my_seq_read,
     .proc_write   = my_seq_write,
-    .proc_release = my_seq_release,
+    .proc_release = my_seq_release
 };
 
 static int __init fortune_init(void)
