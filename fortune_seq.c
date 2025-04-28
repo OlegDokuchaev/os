@@ -6,7 +6,6 @@
 #include <linux/pid.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
-#include "myseq.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("OLEG DOKUCHAEV");
@@ -21,6 +20,43 @@ static struct proc_dir_entry *fortune_dir;
 static struct proc_dir_entry *fortune_file;
 static struct proc_dir_entry *fortune_link;
 static pid_t stored_pid = -1;
+
+static void *my_seq_start(struct seq_file *m, loff_t *pos)
+{
+    printk(KERN_ERR "+ myseq: start called, pos=%lld\n", *pos);
+    return single_start(m, pos);
+}
+
+static void *my_seq_next(struct seq_file *m, void *v, loff_t *pos)
+{
+    printk(KERN_ERR "+ myseq: next called, pos=%lld, v=%p\n", *pos, v);
+    return single_next(m, v, pos);
+}
+
+static void my_seq_stop(struct seq_file *m, void *v)
+{
+    printk(KERN_ERR "+ myseq: stop called, v=%p\n", v);
+    single_stop(m, v);
+}
+
+static ssize_t my_seq_read(struct file *file, char __user *buf,
+                           size_t count, loff_t *ppos)
+{
+    ssize_t ret;
+    printk(KERN_ERR "+ myseq: my_seq_read called, count=%zu, pos=%lld\n", count, *ppos);
+    ret = seq_read(file, buf, count, ppos);
+    printk(KERN_ERR "+ myseq: my_seq_read returned %zd\n", ret);
+    return ret;
+}
+
+static int my_seq_release(struct inode *inode, struct file *file)
+{
+    int ret;
+    printk(KERN_ERR "+ myseq: my_seq_release called\n");
+    ret = single_release(inode, file);
+    printk(KERN_ERR "+ myseq: my_seq_release returned %d\n", ret);
+    return ret;
+}
 
 static ssize_t fortune_write(struct file *file,
                              const char __user *ubuf,
@@ -86,33 +122,24 @@ static int fortune_show(struct seq_file *m, void *v)
     return 0;
 }
 
-static ssize_t fortune_read(struct file *file, char __user *ubuf,
-                            size_t count, loff_t *ppos)
-{
-    ssize_t ret;
-    printk(KERN_ERR "+ fortune_pid_seq: read called, count=%zu, pos=%lld\n", count, *ppos);
-    ret = my_seq_read(file, ubuf, count, ppos);
-    printk(KERN_ERR "+ fortune_pid_seq: read returned %zd\n", ret);
-    return ret;
-}
+static struct seq_operations my_seq_ops = {
+​  .start = my_seq_start,
+​  .next  = my_seq_next,
+​  .stop  = my_seq_stop,
+​  .show  = fortune_show
+};
 
-static int fortune_release(struct inode *inode, struct file *file)
+int my_seq_open(struct inode *inode, struct file *file)
 {
-    printk(KERN_ERR "+ fortune_pid_seq: release called\n");
-    return my_single_release(inode, file);
-}
-
-static int fortune_open(struct inode *inode, struct file *file)
-{
-    printk(KERN_ERR "+ fortune_pid_seq: open called\n");
-    return my_single_open(file, fortune_show, NULL);
+    printk(KERN_ERR "+ myseq: my_open\n");
+    return seq_open(file, &my_seq_ops);
 }
 
 static const struct proc_ops fops = {
-    .proc_open    = fortune_open,
-    .proc_read    = fortune_read,
+    .proc_open    = my_seq_open,
+    .proc_read    = my_seq_read,
     .proc_write   = fortune_write,
-    .proc_release = fortune_release,
+    .proc_release = my_seq_release,
 };
 
 static int __init fortune_init(void)
