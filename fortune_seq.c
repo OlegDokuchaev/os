@@ -21,24 +21,24 @@ static struct proc_dir_entry *fortune_file;
 static struct proc_dir_entry *fortune_link;
 static pid_t stored_pid = -1;
 
-static ssize_t my_seq_read(struct file *file, char __user *buf,
+static ssize_t my__read(struct file *file, char __user *buf,
                            size_t count, loff_t *ppos)
 {
     ssize_t ret;
-    printk(KERN_ERR "+ myseq: my_seq_read called, count=%zu, pos=%lld\n", count, *ppos);
+    printk(KERN_ERR "+ myseq: my_read called, count=%zu, pos=%lld\n", count, *ppos);
     ret = seq_read(file, buf, count, ppos);
     return ret;
 }
 
-static int my_seq_release(struct inode *inode, struct file *file)
+static int my__release(struct inode *inode, struct file *file)
 {
     int ret;
-    printk(KERN_ERR "+ myseq: my_seq_release called\n");
+    printk(KERN_ERR "+ myseq: my_release called\n");
     ret = single_release(inode, file);
     return ret;
 }
 
-static ssize_t my_seq_write(struct file *file,
+static ssize_t my__write(struct file *file,
                              const char __user *ubuf,
                              size_t len, loff_t *ppos)
 {
@@ -60,7 +60,7 @@ static ssize_t my_seq_write(struct file *file,
     return len;
 }
 
-static int my_seq_show(struct seq_file *m, void *v)
+static int my__show(struct seq_file *m, void *v)
 {
     struct pid *pid_struct;
     struct task_struct *task;
@@ -92,17 +92,17 @@ static int my_seq_show(struct seq_file *m, void *v)
     return 0;
 }
 
-static int my_seq_open(struct inode *inode, struct file *file)
+static int my__open(struct inode *inode, struct file *file)
 {
     printk(KERN_ERR "+ myseq: single_open\n");
-    return single_open(file, my_seq_show, NULL);
+    return single_open(file, my__show, NULL);
 }
 
 static const struct proc_ops fops = {
-    .proc_open    = my_seq_open,
-    .proc_read    = my_seq_read,
-    .proc_write   = my_seq_write,
-    .proc_release = my_seq_release
+    .proc_open    = my__open,
+    .proc_read    = my__read,
+    .proc_write   = my__write,
+    .proc_release = my__release
 };
 
 static int __init fortune_init(void)
