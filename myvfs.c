@@ -43,7 +43,7 @@ static struct inode *my_fs_make_inode(struct super_block *sb, int mode)
     if (ret) {
         inode_init_owner(idmap, ret, NULL, mode);
         ret->i_size = PAGE_SIZE;
-        ret->__i_atime = ret->__i_mtime = ret->__i_ctime = current_time(ret);
+        ret->i_atime = ret->i_mtime = ret->i_ctime = current_time(ret);
         ret->i_ino = 1;
     }
 
@@ -96,7 +96,7 @@ static int my_fs_fill_sb(struct super_block *sb, void *data, int silent)
         return -ENOMEM;
     }
 
-    root_inode->__i_atime = root_inode->__i_mtime = root_inode->__i_ctime = current_time(root_inode);
+    root_inode->i_atime = root_inode->i_mtime = root_inode->i_ctime = current_time(root_inode);
     root_inode->i_op = &simple_dir_inode_operations;
     root_inode->i_fop = &simple_dir_operations;
 
