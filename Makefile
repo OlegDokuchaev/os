@@ -4,7 +4,7 @@ CURRENT = $(shell uname -r)
 KDIR = /lib/modules/$(CURRENT)/build
 PWD = $(shell pwd)
 
-obj-m := fortune_seq.o myseq.o
+obj-m := myvfs.o
 
 default: 
 				make -C $(KDIR) M=$(PWD) modules 
