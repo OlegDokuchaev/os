@@ -62,37 +62,33 @@ static const struct proc_ops proc_fops = {
 void my_work_func(struct work_struct *work)
 {
     int code = current_key_code;
-    printk(KERN_INFO "+ wq: work begin");
+    printk(KERN_INFO "+ wq: work begin\n");
 
     if ((code >= 0x47 && code <= 0x53) || code == 0x1C)
-        goto fend;
-
+        return;
     if (code & 0x80)
-        goto fend;
+        return;
 
     code &= 0x7F;
     if (code >= 0 && code < sizeof(ascii) / sizeof(ascii[0])) {
-        printk(KERN_INFO "+ wq: Key pressed: %s (code=0x%02x)", ascii[code], code);
+        printk(KERN_INFO "+ wq: Key pressed: %s (code=0x%02x)\n", ascii[code], code);
         snprintf(buffer, sizeof(buffer), "%s (code=0x%02x)", ascii[code], code);
     } else {
         printk(KERN_INFO "+ wq: Unknown key code: 0x%02x", code);
-        snprintf(buffer, sizeof(buffer), "Unknown (code=0x%02x)", code);
+        snprintf(buffer, sizeof(buffer), "Unknown (code=0x%02x)\n", code);
     }
-    
-    fend:
-    printk(KERN_INFO "+: work end");
 }
 
 irqreturn_t my_irq_handler(int irq, void *dev)
 {
     int code;
-    printk(KERN_INFO "+ wq: my_irq_handler");
+    printk(KERN_INFO "+ wq: my_irq_handler\n");
 
     if (irq == IRQ_NO)
     {
-        printk(KERN_INFO "+ wq: called by keyboard_irq");
+        printk(KERN_INFO "+ wq: called by keyboard_irq\n");
         code = inb(0x60);
-        printk(KERN_INFO "+ wq: key code is %d", code);
+        printk(KERN_INFO "+ wq: key code is %d\n", code);
 
         current_key_code = code;
         queue_work(my_wq, &work);
@@ -109,12 +105,12 @@ static int __init my_wq_init(void)
     printk(KERN_INFO "+ wq: init");
     ret = request_irq(IRQ_NO, my_irq_handler, IRQF_SHARED, "my_irq_handler_wq", (void *)my_irq_handler);
     if (ret) {
-        printk(KERN_ERR "+ wq: request_irq error");
+        printk(KERN_ERR "+ wq: request_irq error\n");
         return ret;
     }
     my_wq = alloc_workqueue("my_wq", __WQ_LEGACY | WQ_MEM_RECLAIM, 1);
     if (!my_wq) {
-        printk(KERN_ERR "+ wq: create queue error");
+        printk(KERN_ERR "+ wq: create queue error\n");
         free_irq(IRQ_NO, (void *)my_irq_handler);
         return -ENOMEM;
     }
@@ -122,14 +118,14 @@ static int __init my_wq_init(void)
     INIT_WORK(&work, my_work_func);
     buffer[0] = '\0';
     proc_create("my_wq", 0, NULL, &proc_fops);
-    printk(KERN_INFO "+ wq: loaded");
+    printk(KERN_INFO "+ wq: loaded\n");
     
     return 0;
 }
 
 static void __exit my_wq_exit(void)
 {
-    printk(KERN_INFO "+ wq: exit");
+    printk(KERN_INFO "+ wq: exit\n");
 
     synchronize_irq(IRQ_NO);
     free_irq(IRQ_NO, (void *)my_irq_handler);
@@ -137,7 +133,7 @@ static void __exit my_wq_exit(void)
     flush_workqueue(my_wq);
     destroy_workqueue(my_wq);
 
-    printk(KERN_INFO "+ wq: unloaded");
+    printk(KERN_INFO "+ wq: unloaded\n");
 }
 
 module_init(my_wq_init);
