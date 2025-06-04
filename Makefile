@@ -4,7 +4,7 @@ CURRENT = $(shell uname -r)
 KDIR = /lib/modules/$(CURRENT)/build
 PWD = $(shell pwd)
 
-obj-m := myvfs.o
+obj-m := wq.o tasklet.o
 
 default: 
 				make -C $(KDIR) M=$(PWD) modules 
