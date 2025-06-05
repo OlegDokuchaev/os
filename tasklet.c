@@ -41,8 +41,9 @@ char *ascii[] = {
         "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10"
 };
 
+static struct proc_dir_entry *proc_file;
 static struct tasklet_struct *tasklet = NULL;
-static char buffer[BUF_SIZE];
+static char buffer[BUF_SIZE] = {0};
 
 static int my_proc_show(struct seq_file *m, void *v) {
     seq_printf(m, "Last pressed key: %s\n", buffer);
@@ -92,27 +93,31 @@ static irqreturn_t my_irq_handler(int irq, void *dev_id)
 
 static int __init my_init(void)
 {
+    proc_file = proc_create("my_tasklet", 0, NULL, &proc_fops);
+    if (!fortune_file) {
+        printk(KERN_ERR "+ fortune_pid: proc_create file failed\n");
+        return -ENOMEM;
+    }
+
     int ret = request_irq(IRQ_NO, my_irq_handler, IRQF_SHARED, "my_irq_handler_tasklet", (void *)(my_irq_handler));
     if (ret)
     {
         printk(KERN_ERR "+ tasklet: request_irq err\n");
+        remove_proc_entry("my_tasklet", NULL);
         return ret;
     }
-
-    buffer[0] = '\0';
 
     tasklet = kmalloc(sizeof(struct tasklet_struct), GFP_KERNEL);
     if (!tasklet)
     {
         printk(KERN_ERR "+ tasklet: kmalloc tasklet err\n");
         free_irq(IRQ_NO, (void *)(my_irq_handler));
+        remove_proc_entry("my_tasklet", NULL);
         return -ENOMEM;
     }
     tasklet_init(tasklet, my_tasklet_fun, 0);
 
-    proc_create("my_tasklet", 0, NULL, &proc_fops);
     printk(KERN_INFO "+ tasklet: loaded\n");
-
     return 0;
 }
 
