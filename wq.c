@@ -37,9 +37,10 @@ char *ascii[] = {
         "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10"
 };
 
+static struct proc_dir_entry *proc_file;
 static struct workqueue_struct *my_wq;
 static struct work_struct work;
-static char buffer[BUF_SIZE];
+static char buffer[BUF_SIZE] = {0};
 static int current_key_code = 0;
 
 static int my_proc_show(struct seq_file *m, void *v)
@@ -101,25 +102,31 @@ irqreturn_t my_irq_handler(int irq, void *dev)
 
 static int __init my_wq_init(void)
 {
-    int ret;
     printk(KERN_INFO "+ wq: init");
-    ret = request_irq(IRQ_NO, my_irq_handler, IRQF_SHARED, "my_irq_handler_wq", (void *)my_irq_handler);
-    if (ret) {
-        printk(KERN_ERR "+ wq: request_irq error\n");
-        return ret;
-    }
-    my_wq = alloc_workqueue("my_wq", __WQ_LEGACY | WQ_MEM_RECLAIM, 1);
-    if (!my_wq) {
-        printk(KERN_ERR "+ wq: create queue error\n");
-        free_irq(IRQ_NO, (void *)my_irq_handler);
+
+    proc_file = proc_create("my_wq", 0, NULL, &proc_fops);
+    if (!fortune_file) {
+        printk(KERN_ERR "+ fortune_pid: proc_create file failed\n");
         return -ENOMEM;
     }
 
+    int ret = request_irq(IRQ_NO, my_irq_handler, IRQF_SHARED, "my_irq_handler_wq", (void *)my_irq_handler);
+    if (ret) {
+        printk(KERN_ERR "+ wq: request_irq error\n");
+        remove_proc_entry("my_wq", NULL);
+        return ret;
+    }
+
+    my_wq = alloc_workqueue("my_wq", __WQ_LEGACY | WQ_MEM_RECLAIM, 1);
+    if (!my_wq) {
+        printk(KERN_ERR "+ wq: create queue error\n");
+        remove_proc_entry("my_wq", NULL);
+        free_irq(IRQ_NO, (void *)my_irq_handler);
+        return -ENOMEM;
+    }
     INIT_WORK(&work, my_work_func);
-    buffer[0] = '\0';
-    proc_create("my_wq", 0, NULL, &proc_fops);
+
     printk(KERN_INFO "+ wq: loaded\n");
-    
     return 0;
 }
 
