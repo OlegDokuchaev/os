@@ -94,7 +94,7 @@ static irqreturn_t my_irq_handler(int irq, void *dev_id)
 static int __init my_init(void)
 {
     proc_file = proc_create("my_tasklet", 0, NULL, &proc_fops);
-    if (!fortune_file) {
+    if (!proc_file) {
         printk(KERN_ERR "+ fortune_pid: proc_create file failed\n");
         return -ENOMEM;
     }
