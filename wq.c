@@ -105,7 +105,7 @@ static int __init my_wq_init(void)
     printk(KERN_INFO "+ wq: init");
 
     proc_file = proc_create("my_wq", 0, NULL, &proc_fops);
-    if (!fortune_file) {
+    if (!proc_file) {
         printk(KERN_ERR "+ fortune_pid: proc_create file failed\n");
         return -ENOMEM;
     }
